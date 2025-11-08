@@ -1,553 +1,133 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 /**
- * NK→SK 농업 적성 추천: Modern UI Edition
- * - Enhanced visual design with animations and modern aesthetics
- * - Color system: #afff46, #f9fff1, #284100
+ * NK→SK 농업 적성 추천: Clean UI
+ * - Simple, calm visuals
+ * - Color system: #FFFFFF (bg), #56CB8E (primary)
  * - Type-safe throughout (no 'any')
  */
 
 const API_BASE =
     import.meta.env?.VITE_API_BASE || "https://unityhackathonbackend.onrender.com";
 
-/* -------------------- 테마 주입 -------------------- */
+/* -------------------- 테마 (심플) -------------------- */
 const injectTheme = () => {
-    const id = "nk-sk-theme";
+    const id = "nk-sk-theme-minimal";
     if (document.getElementById(id)) return;
     const style = document.createElement("style");
     style.id = id;
     style.innerHTML = `
   :root{
-    --green-bright:#afff46;
-    --green-pale:#f9fff1;
-    --green-deep:#284100;
+    --primary:#56cb8e;
+    --bg:#ffffff;
     --text:#111827;
     --muted:#6b7280;
-    --ring:#28410033;
-    --danger:#b91c1c;
-    --bg:#fafbfc;
     --card:#ffffff;
     --border:#e5e7eb;
-    --radius:20px;
-    --shadow:0 20px 60px rgba(40,65,0,.08);
-    --shadow-lg:0 30px 80px rgba(40,65,0,.12);
-    --space-1:6px;
-    --space-2:10px;
-    --space-3:14px;
-    --space-4:18px;
-    --space-5:24px;
+    --radius:14px;
+    --shadow:0 6px 18px rgba(0,0,0,.06);
+    --ring:0 0 0 3px rgba(86,203,142,.25);
+    --space-1:6px; --space-2:10px; --space-3:14px; --space-4:18px; --space-5:24px;
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --text:#e5e7eb;
-      --muted:#9ca3af;
-      --bg:#0a0d0b;
-      --card:#0f1412;
-      --border:#1f2f1f;
-      --ring:#afff4626;
-      --shadow:0 20px 60px rgba(0,0,0,.4);
-      --shadow-lg:0 30px 80px rgba(0,0,0,.5);
+      --bg:#0b0c0f; --text:#e5e7eb; --muted:#9ca3af; --card:#111318; --border:#1f2330;
+      --shadow:0 6px 18px rgba(0,0,0,.45);
+      --ring:0 0 0 3px rgba(86,203,142,.35);
     }
   }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  html, body, #root { height:100%; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
-    color:var(--text);
-    background:var(--bg);
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    line-height:1.6;
+  *{box-sizing:border-box} html,body,#root{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    line-height:1.55;
   }
-  
-  /* Animated background pattern */
-  body::before {
-    content: '';
-    position: fixed;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: 
-      radial-gradient(circle at 20% 50%, rgba(175,255,70,.03) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(40,65,0,.02) 0%, transparent 50%);
-    animation: float 20s ease-in-out infinite;
-    pointer-events: none;
-    z-index: 0;
-  }
-  
-  @keyframes float {
-    0%, 100% { transform: translate(0, 0) rotate(0deg); }
-    33% { transform: translate(30px, -30px) rotate(120deg); }
-    66% { transform: translate(-20px, 20px) rotate(240deg); }
-  }
-  
-  .app {
-    min-height:100%;
-    display:flex;
-    flex-direction:column;
-    position: relative;
-    z-index: 1;
-  }
-  
-  .container {
-    width:100%;
-    max-width:960px;
-    margin:0 auto;
-    padding: var(--space-5) var(--space-4) 140px;
-    position: relative;
-  }
-  
-  @media (min-width: 640px){
-    .container{ padding: 32px 28px 160px; }
-  }
-  
-  /* Glassmorphic card */
-  .card{
-    background: color-mix(in oklab, var(--card) 95%, var(--green-pale) 5%);
-    backdrop-filter: blur(20px) saturate(140%);
-    border:1px solid color-mix(in oklab, var(--border) 60%, var(--green-bright) 5%);
-    border-radius:var(--radius);
-    padding:var(--space-5);
-    box-shadow:var(--shadow);
-    position: relative;
-    overflow: hidden;
-    transition: transform .3s ease, box-shadow .3s ease;
-  }
-  
-  .card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--green-bright), var(--green-deep));
-    opacity: 0;
-    transition: opacity .3s ease;
-  }
-  
-  .card:hover::before {
-    opacity: 1;
-  }
-  
-  .title{
-    font-weight:900;
-    color:var(--green-deep);
-    letter-spacing:-0.02em;
-    line-height: 1.2;
-  }
-  
-  .subtitle{ 
-    color:var(--muted); 
-    margin-top:8px;
-    font-size: 15px;
-  }
-  
-  /* Sticky topbar with blur */
-  .topbar{
-    position:sticky; 
-    top:0; 
-    z-index:30;
-    background: color-mix(in oklab, var(--bg) 80%, transparent 20%);
-    backdrop-filter: saturate(180%) blur(20px);
-    padding: 14px var(--space-4) 12px;
-    border-bottom:1px solid color-mix(in oklab, var(--border) 40%, transparent);
-    box-shadow: 0 4px 30px rgba(40,65,0,.04);
-  }
-  
-  /* Animated progress bar */
-  .progress{ 
-    height:8px; 
-    background: color-mix(in oklab, var(--border) 50%, transparent); 
-    border-radius:999px; 
-    overflow:hidden;
-    position: relative;
-  }
-  
-  .progress::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, 
-      transparent, 
-      rgba(255,255,255,.3), 
-      transparent
-    );
-    animation: shimmer 2s infinite;
-  }
-  
-  .progress > span{ 
-    display:block; 
-    height:100%; 
-    background: linear-gradient(90deg, var(--green-bright), var(--green-deep));
-    box-shadow: 0 0 10px rgba(175,255,70,.3);
-    transition: width .4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-  }
-  
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(200%); }
-  }
-  
-  .row{ display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-  .sp-between{ justify-content:space-between; }
-  
-  /* Modern button styles */
+
+  .app{min-height:100%; display:flex; flex-direction:column}
+  .container{width:100%; max-width:880px; margin:0 auto; padding:24px 18px 120px}
+
+  /* Topbar */
+  .topbar{position:sticky; top:0; z-index:10; background:var(--bg);
+    border-bottom:1px solid var(--border); padding:10px 18px}
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .sp-between{justify-content:space-between}
+
+  /* Card */
+  .card{background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:var(--space-5); box-shadow:var(--shadow)}
+
+  .title{font-weight:800; letter-spacing:-0.01em}
+  .subtitle{color:var(--muted); margin-top:6px; font-size:14px}
+
+  /* Progress */
+  .progress{height:8px; background:#f3f4f6; border-radius:999px; overflow:hidden}
+  .progress > span{display:block; height:100%; background:var(--primary); width:0%}
+
+  /* Buttons */
   .btn{
-    appearance:none; 
-    border:2px solid transparent; 
-    color:var(--green-deep);
-    background:#fff; 
-    border-radius:16px; 
-    padding:14px 20px; 
-    font-weight:800; 
-    cursor:pointer;
-    transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
-    touch-action:manipulation;
-    position: relative;
-    overflow: hidden;
-    font-size: 15px;
+    appearance:none; border:1px solid var(--border); background:#fff; color:#0f172a;
+    border-radius:12px; padding:12px 16px; font-weight:700; cursor:pointer; font-size:14px;
   }
-  
-  .btn::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 0;
-    height: 0;
-    border-radius: 50%;
-    background: rgba(175,255,70,.2);
-    transform: translate(-50%, -50%);
-    transition: width .4s ease, height .4s ease;
-  }
-  
-  .btn:active::before {
-    width: 300px;
-    height: 300px;
-  }
-  
-  .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(40,65,0,.15);
-  }
-  
-  .btn:active{ 
-    transform: translateY(0) scale(.98); 
-  }
-  
-  .btn[disabled]{ 
-    opacity:.4; 
-    cursor:not-allowed;
-    transform: none !important;
-  }
-  
-  .btn.primary{ 
-    background: linear-gradient(135deg, var(--green-bright) 0%, var(--green-deep) 100%);
-    color:#fff; 
-    border-color:transparent;
-    box-shadow: 0 4px 20px rgba(40,65,0,.2);
-  }
-  
-  .btn.primary:hover {
-    box-shadow: 0 8px 30px rgba(40,65,0,.3);
-  }
-  
-  .btn.ghost{ 
-    border-color:transparent; 
-    background:transparent; 
-    color:var(--green-deep);
-    font-weight: 700;
-  }
-  
-  .btn.ghost:hover {
-    background: var(--green-pale);
-    transform: translateY(-1px);
-  }
-  
-  .chips{ display:flex; flex-wrap:wrap; gap:10px; }
-  
-  /* Modern pill design */
+  .btn[disabled]{opacity:.45; cursor:not-allowed}
+  .btn.primary{background:var(--primary); color:#fff; border-color:transparent}
+  .btn.ghost{background:transparent}
+
+  /* Pills */
+  .chips{display:flex; flex-wrap:wrap; gap:10px}
   .pill{
-    display:inline-flex; 
-    align-items:center; 
-    gap:10px;
-    padding:14px 18px; 
-    border-radius:16px; 
-    border:2px solid var(--border);
-    background: var(--card);
-    cursor:pointer; 
-    user-select:none; 
-    min-height:48px;
-    line-height:1.3; 
-    font-weight:700;
-    font-size: 14px;
-    transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
+    display:inline-flex; gap:10px; align-items:center; padding:12px 16px;
+    border-radius:12px; border:1px solid var(--border); background:var(--card);
+    cursor:pointer; user-select:none; font-weight:700; font-size:14px; min-height:44px;
   }
-  
-  .pill::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(175,255,70,.1), transparent);
-    transition: left .5s ease;
-  }
-  
-  .pill:hover::before {
-    left: 100%;
-  }
-  
-  .pill:hover{ 
-    box-shadow: 0 4px 20px rgba(40,65,0,.1);
-    transform: translateY(-2px);
-    border-color: color-mix(in oklab, var(--border) 50%, var(--green-bright) 50%);
-  }
-  
-  .pill:active{ 
-    transform: translateY(0) scale(.98); 
-  }
-  
-  .pill[data-active="true"]{
-    background: var(--green-pale);
-    border-color: var(--green-deep);
-    color: var(--green-deep);
-    box-shadow: 0 0 0 4px var(--ring), 0 8px 25px rgba(40,65,0,.15);
-    transform: translateY(-2px);
-  }
-  
-  .pill .dot{
-    width:12px; 
-    height:12px; 
-    border-radius:999px; 
-    border:2px solid currentColor;
-    background:transparent;
-    transition: all .2s ease;
-    flex-shrink: 0;
-  }
-  
-  .pill[data-active="true"] .dot{ 
-    background: currentColor;
-    box-shadow: 0 0 8px currentColor;
-  }
-  
-  .q-label{ 
-    font-weight:900; 
-    margin: 8px 0 14px; 
-    font-size: 17px;
-    color: var(--green-deep);
-  }
-  
-  .hint{ 
-    color:var(--muted); 
-    font-size:13px;
-    font-weight: 500;
-  }
-  
-  .err{ 
-    color:var(--danger); 
-    font-size:13px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  
-  .err::before {
-    content: '⚠';
-    font-size: 16px;
-  }
-  
+  .pill[data-active="true"]{ border-color:var(--primary); background:rgba(86,203,142,.08)}
+  .pill .dot{width:12px; height:12px; border-radius:999px; border:2px solid currentColor}
+
+  .q-label{font-weight:800; margin:6px 0 12px; font-size:16px}
+  .hint{color:var(--muted); font-size:13px; font-weight:500}
+
+  /* Error (no emoji) */
+  .err{color:#b91c1c; font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px}
+
   .field{
-    display:block; 
-    width:100%; 
-    padding:16px 18px; 
-    border-radius:16px; 
-    border:2px solid var(--border);
-    outline:none; 
-    background:var(--card); 
-    color:var(--text); 
-    font-size:16px;
-    transition: all .2s ease;
-    font-weight: 500;
+    width:100%; padding:14px 16px; border-radius:12px; border:1px solid var(--border);
+    background:var(--card); color:var(--text); font-size:16px;
   }
-  
-  .field:focus{ 
-    border-color: var(--green-deep); 
-    box-shadow: 0 0 0 4px var(--ring), 0 4px 20px rgba(40,65,0,.1);
-    background: var(--green-pale);
-  }
-  
-  textarea.field{ 
-    line-height:1.6;
-    resize: vertical;
-    min-height: 120px;
-  }
-  
-  .kbd{ 
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; 
-    background: var(--green-deep); 
-    color: var(--green-bright); 
-    border-radius:8px; 
-    padding:4px 8px;
-    font-size: 12px;
-    font-weight: 700;
-    border: 1px solid rgba(175,255,70,.2);
-  }
+  .field:focus{outline:none; box-shadow:var(--ring); border-color:var(--primary)}
+  textarea.field{resize:vertical; min-height:110px}
 
-  /* Enhanced action bar */
-  .actionbar{
-    position:fixed; 
-    left:0; 
-    right:0; 
-    bottom:0; 
-    z-index:40;
-    background: color-mix(in oklab, var(--card) 90%, var(--bg) 10%);
-    backdrop-filter: blur(30px) saturate(180%);
-    border-top:1px solid color-mix(in oklab, var(--border) 50%, transparent);
-    padding: 14px var(--space-4) calc(env(safe-area-inset-bottom) + 14px);
-    box-shadow: 0 -10px 40px rgba(40,65,0,.12);
-  }
-  
-  .actionbar-inner{ 
-    max-width:960px; 
-    margin:0 auto; 
-    display:flex; 
-    gap:12px; 
-    align-items: center;
-  }
-
-  /* Report cards with modern styling */
-  .report-list{ 
-    display:flex; 
-    flex-direction:column; 
-    gap:20px; 
-  }
-  
-  .report-card {
-    transition: transform .3s ease, box-shadow .3s ease;
-  }
-  
-  .report-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-  }
-  
+  /* Report */
+  .report-list{display:flex; flex-direction:column; gap:16px}
   .report-card .badge{
-    display:inline-block; 
-    font-weight:800; 
-    padding:8px 14px; 
+    display:inline-block; font-weight:800; padding:6px 10px; border-radius:999px;
+    background:var(--primary); color:#fff; font-size:12px
+  }
+  .report-meta{display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 2px}
+  .report-chip{display:inline-flex; gap:8px; align-items:center; padding:8px 12px;
+    border-radius:10px; border:1px solid var(--border); font-weight:700; font-size:13px}
+  .report-section{margin-top:14px; padding-top:12px; border-top:1px solid var(--border)}
+  .report-section h4{font-size:15px; margin:0 0 6px; font-weight:800}
+  .report-section p, .report-section ul{margin:6px 0 0}
+
+  /* Bottom action bar */
+  .actionbar{position:fixed; left:0; right:0; bottom:0; background:var(--bg);
+    border-top:1px solid var(--border); padding:12px 18px}
+  .actionbar-inner{max-width:880px; margin:0 auto; display:flex; gap:12px; align-items:center}
+
+  /* Loading Banner */
+  .loading-banner{
+    position:sticky; top:48px; z-index:9;
+    background:rgba(86,203,142,.1);
+    border:1px solid var(--border);
+    color:#0f172a;
     border-radius:12px;
-    background: linear-gradient(135deg, var(--green-bright), var(--green-deep));
-    color:#fff;
-    border:none;
-    font-size: 13px;
-    letter-spacing: 0.5px;
-    box-shadow: 0 4px 12px rgba(40,65,0,.2);
-  }
-  
-  .report-meta{ 
-    display:flex; 
-    flex-wrap:wrap; 
-    gap:10px; 
-    margin:12px 0 4px; 
-  }
-  
-  .report-chip{
-    display:inline-flex; 
-    gap:8px; 
-    align-items:center; 
-    padding:10px 14px; 
-    border-radius:12px; 
-    border:2px solid var(--border);
-    background: var(--card);
+    padding:12px 16px;
     font-weight:700;
-    font-size: 13px;
-    transition: all .2s ease;
-  }
-  
-  .report-chip:hover {
-    border-color: var(--green-bright);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(40,65,0,.1);
-  }
-  
-  .report-section{ 
-    margin-top:20px;
-    padding-top: 16px;
-    border-top: 2px solid color-mix(in oklab, var(--border) 40%, transparent);
-  }
-  
-  .report-section h4{ 
-    margin:0 0 10px; 
-    font-size:17px; 
-    color:var(--green-deep);
-    font-weight: 900;
-    letter-spacing: -0.01em;
-  }
-  
-  .report-section ul{ 
-    margin:0; 
-    padding-left:20px; 
-  }
-  
-  .report-section li{ 
-    margin:8px 0;
-    line-height: 1.6;
-  }
-  
-  .small-muted{ 
-    color:var(--muted); 
-    font-size:13px;
-    font-weight: 500;
-  }
-  
-  /* Skeleton loader */
-  .skeleton{
-    background: linear-gradient(90deg, 
-      color-mix(in oklab, var(--border) 30%, transparent), 
-      color-mix(in oklab, var(--border) 60%, transparent),
-      color-mix(in oklab, var(--border) 30%, transparent)
-    );
-    background-size: 300% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
-    border-radius: 12px; 
-    height: 16px;
-  }
-
-  /* Fade in animation */
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  
-  .card, .report-card {
-    animation: fadeIn .5s ease-out;
-  }
-
-  /* Reduced motion */
-  @media (prefers-reduced-motion: reduce){
-    *, *::before, *::after { 
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
   }
   `;
     document.head.appendChild(style);
 };
 
 /* -------------------- 타입 -------------------- */
-
 type YesNo = "Y" | "N";
 
 type Answers = {
@@ -679,9 +259,8 @@ function parseMatches(raw: string): MatchItem[] {
             if (isMatchArray(maybe)) return maybe;
         }
     } catch {
-        // fallback
+        /* ignore */
     }
-
     const firstBracket = raw.indexOf("[");
     const lastBracket = raw.lastIndexOf("]");
     if (firstBracket >= 0 && lastBracket > firstBracket) {
@@ -690,10 +269,9 @@ function parseMatches(raw: string): MatchItem[] {
             const j2 = JSON.parse(sliced) as unknown;
             if (isMatchArray(j2)) return j2;
         } catch {
-            // ignore
+            /* ignore */
         }
     }
-
     return [];
 }
 
@@ -715,7 +293,6 @@ async function getMatches(): Promise<string> {
 }
 
 /* -------------------- 컴포넌트 -------------------- */
-
 const Pill: React.FC<{
     active?: boolean;
     label: string;
@@ -742,14 +319,16 @@ const StepNav: React.FC<{
     onPrev: () => void;
     onNext: () => void;
     canNext: boolean;
-}> = ({ idx, total, onPrev, onNext, canNext }) => {
+    finished?: boolean;
+}> = ({ idx, total, onPrev, onNext, canNext, finished }) => {
     const pct = Math.round(((idx + 1) / total) * 100);
+    const isLast = idx + 1 === total;
     return (
         <div className="topbar">
             <div className="container" style={{ padding: 0 }}>
-                <div className="row sp-between" style={{ marginBottom: 12 }}>
+                <div className="row sp-between" style={{ marginBottom: 10 }}>
                     <div className="row" style={{ gap: 10 }}>
-                        <strong style={{ fontSize: 15 }}>
+                        <strong style={{ fontSize: 14 }}>
                             단계 {idx + 1} / {total}
                         </strong>
                         <span className="hint">진행률 {pct}%</span>
@@ -767,9 +346,9 @@ const StepNav: React.FC<{
                             className="btn primary"
                             onClick={onNext}
                             disabled={!canNext}
-                            aria-label={idx + 1 === total ? "제출" : "다음 단계"}
+                            aria-label={isLast ? (finished ? "나가기" : "제출") : "다음 단계"}
                         >
-                            {idx + 1 === total ? "제출" : "다음 →"}
+                            {isLast ? (finished ? "나가기" : "제출") : "다음 →"}
                         </button>
                     </div>
                 </div>
@@ -791,18 +370,18 @@ const ReportCard: React.FC<{ item: MatchItem; index: number }> = ({
             <div className="row sp-between" style={{ alignItems: "flex-start" }}>
                 <div>
                     <div className="badge">추천 #{index + 1}</div>
-                    <h3 className="title" style={{ fontSize: 24, marginTop: 12 }}>
+                    <h3 className="title" style={{ fontSize: 22, marginTop: 10 }}>
                         {item["분야"]}
                     </h3>
-                    <p className="small-muted" style={{ marginTop: 4 }}>
+                    <p className="subtitle" style={{ marginTop: 2 }}>
                         본인의 경험, 선호, 노동 강도 선호 등을 반영한 제안
                     </p>
                 </div>
             </div>
 
-            <div className="report-section" style={{ marginTop: 12 }}>
+            <div className="report-section" style={{ marginTop: 10 }}>
                 <h4>왜 적합한가요?</h4>
-                <p style={{ margin: 0 }}>{item["적합_이유"]}</p>
+                <p>{item["적합_이유"]}</p>
             </div>
 
             <div className="report-section">
@@ -811,15 +390,15 @@ const ReportCard: React.FC<{ item: MatchItem; index: number }> = ({
                     {region && <span className="report-chip">우선: {region}</span>}
                     {restRegions.map((r, i) => (
                         <span key={i} className="report-chip">
-                            ✨ 대안: {r}
-                        </span>
+              대안: {r}
+            </span>
                     ))}
                 </div>
             </div>
 
             <div className="report-section">
                 <h4>진입 경로</h4>
-                <ul>
+                <ul style={{ margin: "6px 0 0 18px" }}>
                     {item["진입경로"].map((s, i) => (
                         <li key={i}>{s}</li>
                     ))}
@@ -828,12 +407,12 @@ const ReportCard: React.FC<{ item: MatchItem; index: number }> = ({
 
             <div className="report-section">
                 <h4>필요 역량 · 장비 · 자본</h4>
-                <p style={{ margin: 0 }}>{item["필요역량_장비_자본"]}</p>
+                <p>{item["필요역량_장비_자본"]}</p>
             </div>
 
             <div className="report-section">
                 <h4>다음 단계</h4>
-                <ul>
+                <ul style={{ margin: "6px 0 0 18px" }}>
                     {item["다음단계"].map((s, i) => (
                         <li key={i}>{s}</li>
                     ))}
@@ -847,7 +426,7 @@ const ReportList: React.FC<{ items: MatchItem[] }> = ({ items }) => {
     if (!items.length) {
         return (
             <div className="card">
-                <h3 className="title" style={{ fontSize: 20, marginBottom: 8 }}>
+                <h3 className="title" style={{ fontSize: 18, marginBottom: 6 }}>
                     결과
                 </h3>
                 <p className="hint" role="status">
@@ -871,7 +450,6 @@ const Section: React.FC<{ show: boolean; children: React.ReactNode }> = ({
                                                                          }) => <div style={{ display: show ? "block" : "none" }}>{children}</div>;
 
 /* -------------------- 메인 -------------------- */
-
 const App: React.FC = () => {
     useEffect(() => injectTheme(), []);
 
@@ -895,6 +473,7 @@ const App: React.FC = () => {
     const [posting, setPosting] = useState(false);
     const [fetchErr, setFetchErr] = useState<string>("");
     const [matchItems, setMatchItems] = useState<MatchItem[]>([]);
+    const [finished, setFinished] = useState(false);
 
     const sectionRef = useRef<HTMLDivElement>(null!);
 
@@ -929,17 +508,6 @@ const App: React.FC = () => {
     const next = () => {
         if (!canNext) {
             setErrors((e) => ({ ...e, [idx]: "필수 항목을 입력해주세요." }));
-            setTimeout(() => {
-                sectionRef.current?.animate?.(
-                    [
-                        { transform: "translateX(0)" },
-                        { transform: "translateX(-6px)" },
-                        { transform: "translateX(6px)" },
-                        { transform: "translateX(0)" },
-                    ],
-                    { duration: 180 }
-                );
-            }, 0);
             return;
         }
         setErrors((e) => ({ ...e, [idx]: "" }));
@@ -951,6 +519,11 @@ const App: React.FC = () => {
     const toggle = (arr: string[], setArr: (v: string[]) => void, v: string) => {
         if (arr.includes(v)) setArr(arr.filter((x) => x !== v));
         else setArr([...arr, v]);
+    };
+
+    const exit = () => {
+        if (window.history.length > 1) window.history.back();
+        else window.location.href = "/";
     };
 
     const submit = async () => {
@@ -976,6 +549,7 @@ const App: React.FC = () => {
         setPosting(true);
         setFetchErr("");
         setMatchItems([]);
+        setFinished(false);
         try {
             await postRecommendations(payload);
             const txt = await getMatches();
@@ -984,14 +558,24 @@ const App: React.FC = () => {
             if (!items.length) {
                 setFetchErr("결과를 해석할 수 없습니다. 관리자에게 문의해주세요.");
             }
+            setFinished(true);
         } catch (e) {
             setFetchErr(toErr(e));
+            setFinished(true);
         } finally {
             setPosting(false);
         }
     };
 
     const pct = Math.round(((idx + 1) / total) * 100);
+    const onPrimaryClick = () => {
+        if (idx === total - 1) {
+            if (finished && !posting) exit();
+            else submit();
+        } else {
+            next();
+        }
+    };
 
     return (
         <div className="app">
@@ -999,22 +583,28 @@ const App: React.FC = () => {
                 idx={idx}
                 total={total}
                 onPrev={prev}
-                onNext={() => (idx === total - 1 ? submit() : next())}
+                onNext={onPrimaryClick}
                 canNext={canNext}
+                finished={idx === total - 1 ? finished : undefined}
             />
 
             <div className="container">
-                <div
-                    className="row"
-                    style={{ alignItems: "flex-start", marginBottom: 20 }}
-                >
+                {posting && (
+                    <div
+                        className="loading-banner"
+                        role="status"
+                        aria-live="assertive"
+                        aria-atomic="true"
+                        style={{ marginBottom: 12 }}
+                    >
+                        자세한 결과를 위해 1~2분이 소요됩니다)
+                    </div>
+                )}
+
+                <div className="row" style={{ alignItems: "flex-start", marginBottom: 16 }}>
                     <div style={{ flex: 1, minWidth: 260 }}>
-                        <h1 className="title" style={{ fontSize: 32 }}>
-                            NK→SK 농업 적성 추천
-                        </h1>
-                        <p className="subtitle">
-                            12문항을 단계별로 입력하고 맞춤형 추천을 받아보세요
-                        </p>
+                        <h1 className="title" style={{ fontSize: 28 }}>NK→SK 농업 적성 추천</h1>
+                        <p className="subtitle">12문항을 단계별로 입력하고 맞춤형 추천을 받아보세요</p>
                     </div>
                     <button
                         className="btn"
@@ -1040,17 +630,12 @@ const App: React.FC = () => {
                                 />
                             ))}
                         </div>
-                        {errors[0] && (
-                            <div className="err" style={{ marginTop: 10 }}>
-                                {errors[0]}
-                            </div>
-                        )}
+                        {errors[0] && <div className="err" style={{ marginTop: 8 }}>{errors[0]}</div>}
                     </Section>
 
                     <Section show={idx === 1}>
                         <div className="q-label">
-                            어느 분야를 하셨나요?{" "}
-                            <span className="hint">(다중 선택 가능)</span>
+                            어느 분야를 하셨나요? <span className="hint">(다중 선택 가능)</span>
                         </div>
                         <div className="chips" aria-label="경험 분야">
                             {OPTS.q2.map((o) => (
@@ -1063,9 +648,7 @@ const App: React.FC = () => {
                                 />
                             ))}
                         </div>
-                        <div className="hint" style={{ marginTop: 8 }}>
-                            💡 여러 개 선택 가능합니다.
-                        </div>
+                        <div className="hint" style={{ marginTop: 6 }}>여러 개 선택 가능합니다.</div>
                     </Section>
 
                     <Section show={idx === 2}>
@@ -1084,20 +667,15 @@ const App: React.FC = () => {
                                 setQ3(v);
                             }}
                         />
-                        <div id="yearHint" className="hint" style={{ marginTop: 8 }}>
+                        <div id="yearHint" className="hint" style={{ marginTop: 6 }}>
                             0~80 사이의 숫자를 입력하세요
                         </div>
-                        {errors[2] && (
-                            <div className="err" style={{ marginTop: 10 }}>
-                                {errors[2]}
-                            </div>
-                        )}
+                        {errors[2] && <div className="err" style={{ marginTop: 8 }}>{errors[2]}</div>}
                     </Section>
 
                     <Section show={idx === 3}>
                         <div className="q-label">
-                            북한에서 주로 맡았던 역할은 무엇인가요?{" "}
-                            <span className="hint">(다중 선택 가능)</span>
+                            북한에서 주로 맡았던 역할은 무엇인가요? <span className="hint">(다중 선택 가능)</span>
                         </div>
                         <div className="chips">
                             {OPTS.q4.map((o) => (
@@ -1113,11 +691,10 @@ const App: React.FC = () => {
                             <input
                                 className="field"
                                 placeholder="기타 내용을 입력하세요"
-                                style={{ marginTop: 12 }}
+                                style={{ marginTop: 10 }}
                                 onBlur={(e) => {
                                     const t = e.target.value.trim();
-                                    if (t)
-                                        setQ4([...q4.filter((x) => x !== "기타(직접 입력)"), t]);
+                                    if (t) setQ4([...q4.filter((x) => x !== "기타(직접 입력)"), t]);
                                 }}
                             />
                         )}
@@ -1125,8 +702,7 @@ const App: React.FC = () => {
 
                     <Section show={idx === 4}>
                         <div className="q-label">
-                            사용해본 재배 시스템/방식은 무엇인가요?{" "}
-                            <span className="hint">(다중 선택 가능)</span>
+                            사용해본 재배 시스템/방식은 무엇인가요? <span className="hint">(다중 선택 가능)</span>
                         </div>
                         <div className="chips">
                             {OPTS.q5.map((o) => (
@@ -1142,11 +718,10 @@ const App: React.FC = () => {
                             <input
                                 className="field"
                                 placeholder="기타 내용을 입력하세요"
-                                style={{ marginTop: 12 }}
+                                style={{ marginTop: 10 }}
                                 onBlur={(e) => {
                                     const t = e.target.value.trim();
-                                    if (t)
-                                        setQ5([...q5.filter((x) => x !== "기타(직접 입력)"), t]);
+                                    if (t) setQ5([...q5.filter((x) => x !== "기타(직접 입력)"), t]);
                                 }}
                             />
                         )}
@@ -1154,8 +729,7 @@ const App: React.FC = () => {
 
                     <Section show={idx === 5}>
                         <div className="q-label">
-                            선호하는 작업 환경을 선택해주세요{" "}
-                            <span className="hint">(다중 선택 가능)</span>
+                            선호하는 작업 환경을 선택해주세요 <span className="hint">(다중 선택 가능)</span>
                         </div>
                         <div className="chips">
                             {OPTS.q6.map((o) => (
@@ -1183,17 +757,12 @@ const App: React.FC = () => {
                                 />
                             ))}
                         </div>
-                        {errors[6] && (
-                            <div className="err" style={{ marginTop: 10 }}>
-                                {errors[6]}
-                            </div>
-                        )}
+                        {errors[6] && <div className="err" style={{ marginTop: 8 }}>{errors[6]}</div>}
                     </Section>
 
                     <Section show={idx === 7}>
                         <div className="q-label">
-                            남한 농업에서 배우고 싶은 분야가 있나요?{" "}
-                            <span className="hint">(다중 선택 가능)</span>
+                            남한 농업에서 배우고 싶은 분야가 있나요? <span className="hint">(다중 선택 가능)</span>
                         </div>
                         <div className="chips">
                             {OPTS.q8.map((o) => (
@@ -1209,11 +778,10 @@ const App: React.FC = () => {
                             <input
                                 className="field"
                                 placeholder="기타 내용을 입력하세요"
-                                style={{ marginTop: 12 }}
+                                style={{ marginTop: 10 }}
                                 onBlur={(e) => {
                                     const t = e.target.value.trim();
-                                    if (t)
-                                        setQ8([...q8.filter((x) => x !== "기타(직접 입력)"), t]);
+                                    if (t) setQ8([...q8.filter((x) => x !== "기타(직접 입력)"), t]);
                                 }}
                             />
                         )}
@@ -1233,17 +801,12 @@ const App: React.FC = () => {
                                 />
                             ))}
                         </div>
-                        {errors[8] && (
-                            <div className="err" style={{ marginTop: 10 }}>
-                                {errors[8]}
-                            </div>
-                        )}
+                        {errors[8] && <div className="err" style={{ marginTop: 8 }}>{errors[8]}</div>}
                     </Section>
 
                     <Section show={idx === 9}>
                         <label className="q-label" htmlFor="extraJob">
-                            농업 외에 다른 직업 경험도 있나요?{" "}
-                            <span className="hint">(선택사항)</span>
+                            농업 외에 다른 직업 경험도 있나요? <span className="hint">(선택사항)</span>
                         </label>
                         <textarea
                             id="extraJob"
@@ -1269,11 +832,7 @@ const App: React.FC = () => {
                                 />
                             ))}
                         </div>
-                        {errors[10] && (
-                            <div className="err" style={{ marginTop: 10 }}>
-                                {errors[10]}
-                            </div>
-                        )}
+                        {errors[10] && <div className="err" style={{ marginTop: 8 }}>{errors[10]}</div>}
                     </Section>
 
                     <Section show={idx === 11}>
@@ -1290,36 +849,28 @@ const App: React.FC = () => {
                                 />
                             ))}
                         </div>
-                        {errors[11] && (
-                            <div className="err" style={{ marginTop: 10 }}>
-                                {errors[11]}
-                            </div>
-                        )}
+                        {errors[11] && <div className="err" style={{ marginTop: 8 }}>{errors[11]}</div>}
                     </Section>
 
-                    <div
-                        className="row"
-                        style={{ marginTop: 20, justifyContent: "space-between", alignItems: "center" }}
-                    >
-                        <span className="hint">
-                            디버깅용 서버: <span className="kbd">{API_BASE}</span>
-                        </span>
-                        {idx === total - 1 && (
-                            <button className="btn primary" onClick={submit} disabled={posting}>
-                                {posting ? "제출 중…" : "제출하기"}
+                    {/* 최종 단계 제출 버튼 */}
+                    {idx === total - 1 && (
+                        <div className="row" style={{ marginTop: 16, justifyContent: "flex-end" }}>
+                            <button
+                                className="btn primary"
+                                onClick={finished && !posting ? exit : submit}
+                                disabled={posting}
+                            >
+                                {posting ? "제출 중…" : finished ? "나가기" : "제출하기"}
                             </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
 
                 {(fetchErr || matchItems.length > 0) && (
-                    <div style={{ marginTop: 20 }}>
+                    <div style={{ marginTop: 16 }}>
                         {fetchErr && (
-                            <div className="card" role="alert" style={{ marginBottom: 16 }}>
-                                <h3
-                                    className="title"
-                                    style={{ fontSize: 20, marginBottom: 10, color: "var(--text)" }}
-                                >
+                            <div className="card" role="alert" style={{ marginBottom: 12 }}>
+                                <h3 className="title" style={{ fontSize: 18, marginBottom: 6, color: "var(--text)" }}>
                                     결과
                                 </h3>
                                 <div className="err">{fetchErr}</div>
@@ -1329,12 +880,10 @@ const App: React.FC = () => {
                     </div>
                 )}
 
-                <footer
-                    style={{ margin: "32px 0 140px", textAlign: "center", color: "var(--muted)" }}
-                >
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>
-                        © {new Date().getFullYear()} NK→SK Agri Coach
-                    </span>
+                <footer style={{ margin: "28px 0 120px", textAlign: "center", color: "var(--muted)" }}>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>
+            © {new Date().getFullYear()} NK→SK Agri Coach
+          </span>
                 </footer>
             </div>
 
@@ -1353,16 +902,22 @@ const App: React.FC = () => {
                                 aria-live="polite"
                                 style={{ minWidth: 50, textAlign: "right", fontWeight: 700 }}
                             >
-                                {pct}%
-                            </span>
+                {pct}%
+              </span>
                         </div>
                         <button
                             className="btn primary"
                             style={{ flex: 1 }}
-                            onClick={() => (idx === total - 1 ? submit() : next())}
+                            onClick={onPrimaryClick}
                             disabled={!canNext || posting}
                         >
-                            {idx + 1 === total ? (posting ? "제출 중" : "제출") : "다음 →"}
+                            {idx + 1 === total
+                                ? posting
+                                    ? "제출 중"
+                                    : finished
+                                        ? "나가기"
+                                        : "제출"
+                                : "다음 →"}
                         </button>
                     </div>
                 </div>
