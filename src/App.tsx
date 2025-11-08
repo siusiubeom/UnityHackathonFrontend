@@ -1064,7 +1064,7 @@ const App: React.FC = () => {
                             ))}
                         </div>
                         <div className="hint" style={{ marginTop: 8 }}>
-                            💡 여러 개 선택 가능합니다
+                            💡 여러 개 선택 가능합니다.
                         </div>
                     </Section>
 
