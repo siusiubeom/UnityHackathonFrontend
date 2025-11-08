@@ -476,9 +476,33 @@ const App: React.FC = () => {
     const [finished, setFinished] = useState(false);
 
     const sectionRef = useRef<HTMLDivElement>(null!);
+    const prevIdxRef = useRef(0);
 
     useEffect(() => {
-        sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        const el = sectionRef.current;
+        if (!el) return;
+
+        // Detect direction (forward only)
+        const dir = idx - prevIdxRef.current;
+        prevIdxRef.current = idx;
+        if (dir <= 0) return;
+
+        // Check visibility (mostly in view = within ±25% of viewport)
+        const rect = el.getBoundingClientRect();
+        const vh = window.innerHeight || document.documentElement.clientHeight;
+        const mostlyVisible = rect.top > -0.25 * vh && rect.bottom < 1.25 * vh;
+        if (mostlyVisible) return;
+
+        // Respect reduced motion; use 'nearest' for gentler scrolling
+        const prefersReduced =
+            typeof window !== "undefined" &&
+            window.matchMedia &&
+            window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        el.scrollIntoView({
+            behavior: prefersReduced ? "auto" : "smooth",
+            block: "nearest",
+        });
     }, [idx]);
 
     const validators: Record<number, () => boolean> = {
