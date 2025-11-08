@@ -1302,7 +1302,7 @@ const App: React.FC = () => {
                         style={{ marginTop: 20, justifyContent: "space-between", alignItems: "center" }}
                     >
                         <span className="hint">
-                            서버: <span className="kbd">{API_BASE}</span>
+                            디버깅용 서버: <span className="kbd">{API_BASE}</span>
                         </span>
                         {idx === total - 1 && (
                             <button className="btn primary" onClick={submit} disabled={posting}>
